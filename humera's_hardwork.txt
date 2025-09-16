@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Farming Assistant for Kerala</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS and JS for the interactive map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --primary-green: #38a169;
+            --dark-green: #276749;
+            --background-dark: #1a202c;
+            --text-light: #f7fafc;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-dark);
+            color: var(--text-light);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section {
+            padding: 4rem 1rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Hero Section Specifics */
+        #hero {
+            position: relative;
+            background: linear-gradient(180deg, rgba(26, 32, 44, 1) 0%, rgba(55, 126, 124, 0.2) 100%);
+            overflow: hidden;
+        }
+        
+        #hero canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #hero-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }
+
+        /* Navigation */
+        .nav-link.active {
+            position: relative;
+            font-weight: 700;
+        }
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 2px;
+            background-color: var(--primary-green);
+            border-radius: 1px;
+        }
+
+        /* Card and Button Styles */
+        .card {
+            background-color: #2d3748;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-green);
+            color: var(--text-light);
+            border-radius: 9999px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--dark-green);
+            transform: scale(1.05);
+        }
+        
+        /* Chatbot UI */
+        #chat-window {
+            height: 400px;
+            overflow-y: auto;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .message-bubble {
+            max-width: 80%;
+            padding: 0.75rem;
+            border-radius: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .user-message {
+            background-color: #4a5568;
+            align-self: flex-end;
+            border-bottom-right-radius: 0.25rem;
+        }
+
+        .ai-message {
+            background-color: #2f855a;
+            align-self: flex-start;
+            border-bottom-left-radius: 0.25rem;
+        }
+
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid var(--primary-green);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Map specific styles */
+        #kerala-map {
+            width: 100%;
+            height: 450px;
+            border-radius: 1rem;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100">
+
+    <!-- Navbar -->
+    <nav class="fixed top-0 left-0 w-full z-50 p-2 bg-gray-900 bg-opacity-70 backdrop-filter backdrop-blur-lg rounded-b-xl">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-teal-400">AgriVerse AI</h1>
+            <div class="hidden md:flex space-x-4">
+                <a href="#hero" class="nav-link px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors duration-300" data-translate="nav-home">Home</a>
+                <a href="#assistant" class="nav-link px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors duration-300" data-translate="nav-assistant">AI Assistant</a>
+                <a href="#detector" class="nav-link px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors duration-300" data-translate="nav-detector">Disease Detector</a>
+                <a href="#weather" class="nav-link px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors duration-300" data-translate="nav-weather">Weather</a>
+                <a href="#market" class="nav-link px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors duration-300" data-translate="nav-market">Market & Price Tracker</a>
+                <a href="#knowledge" class="nav-link px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors duration-300" data-translate="nav-knowledge">Knowledge Hub</a>
+            </div>
+            <button id="lang-switcher" class="bg-gray-800 px-3 py-1 rounded-full text-sm font-semibold hover:bg-gray-700 transition-colors duration-300">
+                English ↔ മലയാളം
+            </button>
+        </div>
+    </nav>
+    
+    <!-- Hero Section with 3D Canvas -->
+    <div id="hero" class="section">
+        <canvas id="visualizer"></canvas>
+        <div id="hero-content" class="w-full max-w-2xl px-4 py-8 md:py-16">
+            <h2 class="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-teal-400 mb-4 animate-fade-in-down" data-translate="hero-title">
+                Cultivate the Future with AI
+            </h2>
+            <p class="text-xl md:text-2xl text-gray-300 mb-8 animate-fade-in-up" data-translate="hero-subtitle">
+                Your smart farming companion for Kerala. Get real-time insights, detect diseases, and optimize your yield with AgriVerse AI.
+            </p>
+            <a href="#assistant" class="btn-primary animate-fade-in-up" data-translate="hero-button">Get Started</a>
+        </div>
+    </div>
+
+    <!-- AI Farming Assistant Section -->
+    <div id="assistant" class="section bg-gray-900">
+        <div class="card p-6 md:p-10 w-full max-w-4xl">
+            <h3 class="text-2xl md:text-4xl font-bold mb-6 text-center" data-translate="assistant-title">AI Farming Assistant</h3>
+            <div id="chat-window" class="flex flex-col p-4 mb-4 space-y-4">
+                <div class="ai-message message-bubble self-start">
+                    Hello! I'm your AI farming assistant. How can I help you today?
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <input type="text" id="chat-input" placeholder="Ask a question..." class="flex-1 bg-gray-700 rounded-full px-5 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500" data-translate-placeholder="assistant-placeholder">
+                <button id="chat-send" class="bg-green-600 p-3 rounded-full hover:bg-green-500 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 00.183.183l-1.353 1.353a1 1 0 001.414 1.414l1.353-1.353a1 1 0 00.183-.183l14-7a1 1 0 000-1.788l-7-14zM12 9l2.5-2.5L12 4l-4 4-2.5-2.5L6 7zM10 13a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <button id="voice-input" class="bg-blue-600 p-3 rounded-full hover:bg-blue-500 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm3 8a5 5 0 00-5 5h10a5 5 0 00-5-5z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disease Detector Section -->
+    <div id="detector" class="section bg-gray-800">
+        <div class="card p-6 md:p-10 w-full max-w-4xl text-center">
+            <h3 class="text-2xl md:text-4xl font-bold mb-6" data-translate="detector-title">Disease Detector</h3>
+            <p class="text-gray-400 mb-8" data-translate="detector-subtitle">Upload a photo of a leaf or fruit to instantly detect diseases and get remedies.</p>
+            <div id="drop-area" class="border-2 border-dashed border-gray-600 rounded-xl p-8 mb-6 cursor-pointer hover:border-green-500 transition-colors" data-translate="detector-drop-area">
+                <p>Drag & drop your image here, or <span class="text-green-400 font-semibold" data-translate="detector-cta">click to upload</span></p>
+                <input type="file" id="file-input" class="hidden" accept="image/*">
+            </div>
+            <div id="detector-result" class="hidden bg-gray-700 p-4 rounded-xl text-left flex flex-col items-center">
+                <div id="detector-loader" class="loader w-10 h-10 mb-4 hidden"></div>
+                <h4 class="text-xl font-semibold mb-2" data-translate="detector-result-title">Analysis Result:</h4>
+                <div class="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4 mb-4">
+                    <img id="uploaded-image" src="" alt="Uploaded image preview" class="w-24 h-24 object-cover rounded-lg">
+                    <div>
+                        <p class="text-green-400 font-bold text-lg" data-translate="detector-detected-label">Disease Detected: <span id="disease-name"></span></p>
+                        <p class="text-sm text-gray-400" id="detection-summary" data-translate-content="detection-summary"></p>
+                    </div>
+                </div>
+                <h5 class="font-semibold text-green-300" data-translate="detector-remedies-label">Recommended Remedies:</h5>
+                <p id="remedies-text" class="text-gray-300 mt-2 whitespace-pre-wrap"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weather & Climate Updates Section -->
+    <div id="weather" class="section bg-gray-900">
+        <div class="card p-6 md:p-10 w-full max-w-4xl text-center">
+            <h3 class="text-2xl md:text-4xl font-bold mb-6" data-translate="weather-title">Weather & Climate Updates</h3>
+            <p class="text-gray-400 mb-8" data-translate="weather-subtitle">Interactive map of Kerala showing real-time weather and climate tips.</p>
+            <div id="kerala-map" class="rounded-xl shadow-xl"></div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div class="bg-gray-800 p-4 rounded-lg flex items-center justify-between">
+                    <span data-translate="weather-temp-label">Temperature</span>
+                    <span class="text-xl font-semibold text-green-400" id="weather-temp-value"></span>
+                </div>
+                <div class="bg-gray-800 p-4 rounded-lg flex items-center justify-between">
+                    <span data-translate="weather-humidity-label">Humidity</span>
+                    <span class="text-xl font-semibold text-green-400" id="weather-humidity-value"></span>
+                </div>
+                <div class="bg-gray-800 p-4 rounded-lg flex items-center justify-between">
+                    <span data-translate="weather-rainfall-label">Rainfall (24h)</span>
+                    <span class="text-xl font-semibold text-green-400" id="weather-rainfall-value"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Market & Price Tracker Section -->
+    <div id="market" class="section bg-gray-800">
+        <div class="card p-6 md:p-10 w-full max-w-4xl text-center">
+            <h3 class="text-2xl md:text-4xl font-bold mb-6" data-translate="market-title">Market & Price Tracker</h3>
+            <p class="text-gray-400 mb-8" data-translate="market-subtitle">View real-time market prices and trends for your crops to make informed decisions.</p>
+            
+            <div class="flex items-center justify-center space-x-4 mb-6">
+                <div id="market-drop-area" class="border-2 border-dashed border-gray-600 rounded-xl p-6 cursor-pointer hover:border-green-500 transition-colors">
+                    <p class="text-sm" data-translate="market-drop-area">Drag & drop a crop image, or <span class="text-green-400 font-semibold" data-translate="market-cta">click to upload</span></p>
+                    <input type="file" id="market-file-input" class="hidden" accept="image/*">
+                </div>
+            </div>
+            
+            <div id="market-result" class="flex items-center justify-center p-4 rounded-xl mb-6 hidden">
+                <div id="market-loader" class="loader w-10 h-10 mb-4 hidden"></div>
+            </div>
+
+            <div class="overflow-x-auto w-full">
+                <table class="w-full text-left table-auto">
+                    <thead>
+                        <tr class="bg-gray-700">
+                            <th class="p-4 rounded-tl-lg" data-translate="market-crop-header">Crop</th>
+                            <th class="p-4" data-translate="market-price-header">Today's Price</th>
+                            <th class="p-4 rounded-tr-lg" data-translate="market-trend-header">Trend</th>
+                        </tr>
+                    </thead>
+                    <tbody id="market-table-body">
+                        <!-- Content will be dynamically updated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Knowledge Hub Section -->
+    <div id="knowledge" class="section bg-gray-900">
+        <div class="card p-6 md:p-10 w-full max-w-4xl text-center">
+            <h3 class="text-2xl md:text-4xl font-bold mb-6" data-translate="knowledge-title">Knowledge Hub</h3>
+            <p class="text-gray-400 mb-8" data-translate="knowledge-subtitle">Expert tips and eco-friendly farming practices to boost your yield sustainably.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div id="irrigation-card" class="card p-6 text-left cursor-pointer">
+                    <h4 class="text-xl font-semibold mb-2 text-green-400" data-translate="knowledge-irrigation-title">Sustainable Irrigation</h4>
+                    <p class="text-gray-300 text-sm" data-translate="knowledge-irrigation-text">Learn about drip irrigation and smart water management techniques for Kerala's climate.</p>
+                </div>
+                <div id="pest-control-card" class="card p-6 text-left cursor-pointer">
+                    <h4 class="text-xl font-semibold mb-2 text-green-400" data-translate="knowledge-pest-control-title">Organic Pest Control</h4>
+                    <p class="text-gray-300 text-sm" data-translate="knowledge-pest-control-text">Discover natural and effective ways to protect your crops from pests without harmful chemicals.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sustainable Irrigation Details Page (hidden by default) -->
+    <div id="irrigation-details-page" class="section hidden bg-gray-900">
+        <div class="card p-6 md:p-10 w-full max-w-4xl text-center">
+            <button id="back-to-knowledge" class="btn-primary mb-6 self-start" data-translate="back-button">← Back to Knowledge Hub</button>
+            <h3 class="text-2xl md:text-4xl font-bold mb-6" data-translate="irrigation-details-title">Sustainable Irrigation Techniques for Kerala</h3>
+            <p class="text-lg text-gray-300 mb-6" data-translate="irrigation-details-intro">
+                Effective water management is crucial for farming in Kerala's diverse climate, from heavy monsoons to dry spells. Sustainable irrigation methods help you conserve water, reduce labor, and improve crop yield.
+            </p>
+            <div class="text-left space-y-6">
+                <div class="mb-4">
+                    <h4 class="text-xl font-semibold text-green-400" data-translate="drip-irrigation-heading">1. Drip Irrigation</h4>
+                    <p class="text-gray-300 text-sm mt-2" data-translate="drip-irrigation-text">
+                        Drip irrigation delivers water and nutrients directly to the plant's root zone, drop by drop. This method is highly efficient, minimizing water loss due to evaporation. It's ideal for crops like **vegetables, fruit trees, and spices** in Kerala's sloped terrains and home gardens.
+                    </p>
+                </div>
+                <div class="mb-4">
+                    <h4 class="text-xl font-semibold text-green-400" data-translate="sprinkler-irrigation-heading">2. Sprinkler Irrigation</h4>
+                    <p class="text-gray-300 text-sm mt-2" data-translate="sprinkler-irrigation-text">
+                        Sprinkler irrigation mimics natural rainfall by spraying water over crops. It's a great option for **paddy, pulses, and fodder crops** in uneven fields where other methods are difficult to implement. This method helps maintain soil moisture and can be very useful during dry spells.
+                    </p>
+                </div>
+                <div class="mb-4">
+                    <h4 class="text-xl font-semibold text-green-400" data-translate="water-management-heading">3. Smart Water Management</h4>
+                    <p class="text-gray-300 text-sm mt-2" data-translate="water-management-text">
+                        Using technologies like **soil moisture sensors** and automated systems can optimize water use. By connecting these tools to your irrigation system, you can ensure that your plants receive the exact amount of water they need, when they need it, preventing both over-watering and drought stress.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Organic Pest Control Details Page (hidden by default) -->
+    <div id="pest-control-details-page" class="section hidden bg-gray-900">
+        <div class="card p-6 md:p-10 w-full max-w-4xl text-center">
+            <button id="back-to-knowledge-2" class="btn-primary mb-6 self-start" data-translate="back-button">← Back to Knowledge Hub</button>
+            <h3 class="text-2xl md:text-4xl font-bold mb-6" data-translate="pest-control-details-title">Organic Pest Control in Kerala</h3>
+            <p class="text-lg text-gray-300 mb-6" data-translate="pest-control-details-intro">
+                Organic pest control methods are vital for maintaining a healthy ecosystem and producing chemical-free crops. These methods leverage natural ingredients and sustainable practices to protect your plants from common pests in Kerala.
+            </p>
+            <div class="text-left space-y-6">
+                <div class="mb-4">
+                    <h4 class="text-xl font-semibold text-green-400" data-translate="neem-oil-heading">1. Neem Oil Spray</h4>
+                    <p class="text-gray-300 text-sm mt-2" data-translate="neem-oil-text">
+                        Neem oil is a powerful natural pesticide derived from the neem tree. It disrupts the life cycle of many pests like **leaf rollers and aphids**. To use, mix 5 ml of neem oil with a liter of water and a few drops of mild soap. Spray this solution on the leaves, especially the undersides, every 7-10 days.
+                    </p>
+                </div>
+                <div class="mb-4">
+                    <h4 class="text-xl font-semibold text-green-400" data-translate="bio-pesticides-heading">2. Bio-Pesticides</h4>
+                    <p class="text-gray-300 text-sm mt-2" data-translate="bio-pesticides-text">
+                        Bio-pesticides use living organisms or their by-products to control pests. Examples include **Trichogramma wasps** to control paddy stem borers and **Beauveria bassiana** for managing rhinoceros beetles in coconut trees. These are effective and safe for the environment.
+                    </p>
+                </div>
+                <div class="mb-4">
+                    <h4 class="text-xl font-semibold text-green-400" data-translate="companion-planting-heading">3. Companion Planting & Trap Crops</h4>
+                    <p class="text-gray-300 text-sm mt-2" data-translate="companion-planting-text">
+                        Strategically planting certain crops together can naturally deter pests. For example, planting **marigold** flowers can repel nematodes in vegetable beds. Using **trap crops**, such as mustard greens, can attract pests away from your main crops, protecting your yield.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Smooth scrolling for navigation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Highlight active nav link on scroll
+        const sections = document.querySelectorAll('div[id]');
+        const navLinks = document.querySelectorAll('.nav-link');
+        
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= (sectionTop - sectionHeight / 3)) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').includes(current)) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // 3D Visualization with Three.js
+        const visualizerContainer = document.getElementById('hero');
+        const canvas = document.getElementById('visualizer');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, visualizerContainer.clientWidth / visualizerContainer.clientHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+        
+        let mouseX = 0, mouseY = 0;
+        let windowHalfX = visualizerContainer.clientWidth / 2;
+        let windowHalfY = visualizerContainer.clientHeight / 2;
+
+        function onDocumentMouseMove(event) {
+            mouseX = (event.clientX - windowHalfX) * 0.005;
+            mouseY = (event.clientY - windowHalfY) * 0.005;
+        }
+        document.addEventListener('mousemove', onDocumentMouseMove, false);
+
+        renderer.setSize(visualizerContainer.clientWidth, visualizerContainer.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        camera.position.z = 30;
+
+        // Create the smart field visualizer
+        const sphereGroup = new THREE.Group();
+        const lineGroup = new THREE.Group();
+        const gridSize = 10;
+        const spacing = 4;
+        const spheres = [];
+        
+        // Central data core
+        const coreGeometry = new THREE.SphereGeometry(2, 32, 32);
+        const coreMaterial = new THREE.MeshBasicMaterial({ color: 0x4fd1c5, transparent: true, opacity: 0.8 });
+        const core = new THREE.Mesh(coreGeometry, coreMaterial);
+        sphereGroup.add(core);
+
+        // Surrounding grid of spheres
+        for (let i = -gridSize / 2; i <= gridSize / 2; i++) {
+            for (let j = -gridSize / 2; j <= gridSize / 2; j++) {
+                const sphereGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+                const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x38a169, transparent: true, opacity: 0.8 });
+                const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                sphere.position.set(i * spacing, j * spacing, 0);
+                spheres.push(sphere);
+                sphereGroup.add(sphere);
+
+                // Create a line from the core to the sphere
+                const points = [core.position, sphere.position];
+                const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+                const lineMaterial = new THREE.LineBasicMaterial({
+                    color: 0x4fd1c5,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const line = new THREE.Line(lineGeometry, lineMaterial);
+                lineGroup.add(line);
+            }
+        }
+
+        scene.add(sphereGroup);
+        scene.add(lineGroup);
+
+        // Add lights
+        const ambientLight = new THREE.AmbientLight(0x404040, 2);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0x4fd1c5, 2, 100);
+        pointLight.position.set(0, 0, 0);
+        scene.add(pointLight);
+
+        // Animation Loop
+        const animate = () => {
+            requestAnimationFrame(animate);
+            const time = Date.now() * 0.001;
+
+            // Animate the spheres in a wave-like motion
+            spheres.forEach((sphere, index) => {
+                const waveHeight = Math.sin(time + index * 0.2) * 1.5;
+                sphere.position.z = waveHeight;
+            });
+            
+            // Animate lines to fade in/out
+            lineGroup.children.forEach((line, index) => {
+                line.material.opacity = (Math.sin(time * 0.5 + index * 0.1) + 1) * 0.2;
+            });
+            
+            // Animate the core
+            core.scale.setScalar(1 + Math.sin(time) * 0.1);
+
+            // Rotate the whole visualizer
+            sphereGroup.rotation.z += 0.001;
+            lineGroup.rotation.z += 0.001;
+
+            // Camera movement based on mouse
+            camera.position.x += (mouseX - camera.position.x) * .05;
+            camera.position.y += (-mouseY - camera.position.y) * .05;
+            camera.lookAt(scene.position);
+
+            renderer.render(scene, camera);
+        };
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const width = visualizerContainer.clientWidth;
+            const height = visualizerContainer.clientHeight;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            windowHalfX = width / 2;
+            windowHalfY = height / 2;
+        });
+
+        // Language Translation
+        let currentLanguage = 'en';
+
+        const translations = {
+            'en': {
+                'nav-home': 'Home',
+                'nav-assistant': 'AI Assistant',
+                'nav-detector': 'Disease Detector',
+                'nav-weather': 'Weather',
+                'nav-market': 'Market & Price Tracker',
+                'nav-knowledge': 'Knowledge Hub',
+                'hero-title': 'Cultivate the Future with AI',
+                'hero-subtitle': 'Your smart farming companion for Kerala. Get real-time insights, detect diseases, and optimize your yield with AgriVerse AI.',
+                'hero-button': 'Get Started',
+                'assistant-title': 'AI Farming Assistant',
+                'assistant-placeholder': 'Ask a question...',
+                'detector-title': 'Disease Detector',
+                'detector-subtitle': 'Upload a photo of a leaf or fruit to instantly detect diseases and get remedies.',
+                'detector-drop-area': 'Drag & drop your image here, or ',
+                'detector-cta': 'click to upload',
+                'detector-result-title': 'Analysis Result:',
+                'detector-detected-label': 'Disease Detected: ',
+                'detector-remedies-label': 'Recommended Remedies:',
+                'weather-title': 'Weather & Climate Updates',
+                'weather-subtitle': 'Interactive map of Kerala showing real-time weather and climate tips.',
+                'weather-temp-label': 'Temperature',
+                'weather-humidity-label': 'Humidity',
+                'weather-rainfall-label': 'Rainfall (24h)',
+                'market-title': 'Market & Price Tracker',
+                'market-subtitle': 'View real-time market prices and trends for your crops to make informed decisions.',
+                'market-crop-header': 'Crop',
+                'market-price-header': 'Today\'s Price',
+                'market-trend-header': 'Trend',
+                'coconut-row-1': 'Coconut',
+                'coconut-row-2': '₹32/kg',
+                'coconut-row-3': '▲ +1.5%',
+                'rubber-row-1': 'Rubber',
+                'rubber-row-2': '₹165/kg',
+                'rubber-row-3': '▼ -0.8%',
+                'cardamom-row-1': 'Cardamom',
+                'cardamom-row-2': '₹1100/kg',
+                'cardamom-row-3': '▲ +3.2%',
+                'knowledge-title': 'Knowledge Hub',
+                'knowledge-subtitle': 'Expert tips and eco-friendly farming practices to boost your yield sustainably.',
+                'knowledge-irrigation-title': 'Sustainable Irrigation',
+                'knowledge-irrigation-text': 'Learn about drip irrigation and smart water management techniques for Kerala\'s climate.',
+                'knowledge-pest-control-title': 'Organic Pest Control',
+                'knowledge-pest-control-text': 'Discover natural and effective ways to protect your crops from pests without harmful chemicals.',
+                'assistant-initial-message': 'Hello! I\'m your AI farming assistant. How can I help you today?',
+                'typing-message': 'Thinking...',
+                'market-drop-area': 'Drag & drop a crop image, or ',
+                'market-cta': 'click to upload',
+                'market-table-instruction': 'Upload an image of your crop to see its current market price and trend.',
+                'back-button': '← Back to Knowledge Hub',
+                'irrigation-details-title': 'Sustainable Irrigation Techniques for Kerala',
+                'irrigation-details-intro': 'Effective water management is crucial for farming in Kerala\'s diverse climate, from heavy monsoons to dry spells. Sustainable irrigation methods help you conserve water, reduce labor, and improve crop yield.',
+                'drip-irrigation-heading': '1. Drip Irrigation',
+                'drip-irrigation-text': 'Drip irrigation delivers water and nutrients directly to the plant\'s root zone, drop by drop. This method is highly efficient, minimizing water loss due to evaporation. It\'s ideal for crops like vegetables, fruit trees, and spices in Kerala\'s sloped terrains and home gardens.',
+                'sprinkler-irrigation-heading': '2. Sprinkler Irrigation',
+                'sprinkler-irrigation-text': 'Sprinkler irrigation mimics natural rainfall by spraying water over crops. It\'s a great option for paddy, pulses, and fodder crops in uneven fields where other methods are difficult to implement. This method helps maintain soil moisture and can be very useful during dry spells.',
+                'water-management-heading': '3. Smart Water Management',
+                'water-management-text': 'Using technologies like soil moisture sensors and automated systems can optimize water use. By connecting these tools to your irrigation system, you can ensure that your plants receive the exact amount of water they need, when they need it, preventing both over-watering and drought stress.',
+                'pest-control-details-title': 'Organic Pest Control in Kerala',
+                'pest-control-details-intro': 'Organic pest control methods are vital for maintaining a healthy ecosystem and producing chemical-free crops. These methods leverage natural ingredients and sustainable practices to protect your plants from common pests in Kerala.',
+                'neem-oil-heading': '1. Neem Oil Spray',
+                'neem-oil-text': 'Neem oil is a powerful natural pesticide derived from the neem tree. It disrupts the life cycle of many pests like leaf rollers and aphids. To use, mix 5 ml of neem oil with a liter of water and a few drops of mild soap. Spray this solution on the leaves, especially the undersides, every 7-10 days.',
+                'bio-pesticides-heading': '2. Bio-Pesticides',
+                'bio-pesticides-text': 'Bio-pesticides use living organisms or their by-products to control pests. Examples include Trichogramma wasps to control paddy stem borers and Beauveria bassiana for managing rhinoceros beetles in coconut trees. These are effective and safe for the environment.',
+                'companion-planting-heading': '3. Companion Planting & Trap Crops',
+                'companion-planting-text': 'Strategically planting certain crops together can naturally deter pests. For example, planting marigold flowers can repel nematodes in vegetable beds. Using trap crops, such as mustard greens, can attract pests away from your main crops, protecting your yield.',
+            },
+            'ml': {
+                'nav-home': 'ഹോം',
+                'nav-assistant': 'എഐ അസിസ്റ്റന്റ്',
+                'nav-detector': 'രോഗം കണ്ടെത്തൽ',
+                'nav-weather': 'കാലാവസ്ഥ',
+                'nav-market': 'മാർക്കറ്റ് & വില ട്രാക്കർ',
+                'nav-knowledge': 'വിജ്ഞാന കേന്ദ്രം',
+                'hero-title': 'എഐ ഉപയോഗിച്ച് കൃഷിയെ വളർത്തുക',
+                'hero-subtitle': 'കേരളത്തിലെ കർഷകർക്കായുള്ള നിങ്ങളുടെ സ്മാർട്ട് ഫാർമിംഗ് കൂട്ടുകാരൻ. തത്സമയ വിവരങ്ങൾ നേടുക, രോഗങ്ങൾ കണ്ടെത്തുക, നിങ്ങളുടെ വിളവ് ഒപ്റ്റിമൈസ് ചെയ്യുക.',
+                'hero-button': 'തുടങ്ങുക',
+                'assistant-title': 'എഐ ഫാർമിംഗ് അസിസ്റ്റന്റ്',
+                'assistant-placeholder': 'നിങ്ങളുടെ ചോദ്യം ചോദിക്കുക...',
+                'detector-title': 'രോഗം കണ്ടെത്തൽ',
+                'detector-subtitle': 'ഒരു ഇലയുടെയോ പഴത്തിന്റെയോ ചിത്രം അപ്‌ലോഡ് ചെയ്താൽ ഉടൻ രോഗം കണ്ടെത്തി പരിഹാരങ്ങൾ ലഭിക്കും.',
+                'detector-drop-area': 'നിങ്ങളുടെ ചിത്രം ഇവിടെ വലിച്ചിടുക, അല്ലെങ്കിൽ ',
+                'detector-cta': 'അപ്‌ലോഡ് ചെയ്യാൻ ക്ലിക്കുചെയ്യുക',
+                'detector-result-title': 'വിശകലന ഫലം:',
+                'detector-detected-label': 'കണ്ടെത്തിയ രോഗം: ',
+                'detector-remedies-label': 'നിർദ്ദേശിച്ച പരിഹാരങ്ങൾ:',
+                'weather-title': 'കാലാവസ്ഥ, കാലാവസ്ഥാ അപ്‌ഡേറ്റുകൾ',
+                'weather-subtitle': 'കേരളത്തിലെ തത്സമയ കാലാവസ്ഥയും കാർഷിക നിർദ്ദേശങ്ങളും കാണിക്കുന്ന ഇൻ്ററാക്ടീവ് മാപ്പ്.',
+                'weather-temp-label': 'താപനില',
+                'weather-humidity-label': 'ഈർപ്പം',
+                'weather-humidity-value': '85%',
+                'weather-rainfall-label': 'മഴ (24 മണിക്കൂർ)',
+                'weather-rainfall-value': '5mm',
+                'market-title': 'മാർക്കറ്റ്, വില ട്രാക്കർ',
+                'market-subtitle': 'നിങ്ങളുടെ വിളകൾക്കുള്ള തത്സമയ മാർക്കറ്റ് വിലകളും ട്രെൻഡുകളും കണ്ട് വിവരമുള്ള തീരുമാനങ്ങൾ എടുക്കുക.',
+                'market-crop-header': 'വിളവ്',
+                'market-price-header': 'ഇന്നത്തെ വില',
+                'market-trend-header': 'ട്രെൻഡ്',
+                'coconut-row-1': 'തേങ്ങ',
+                'coconut-row-2': '₹32/kg',
+                'coconut-row-3': '▲ +1.5%',
+                'rubber-row-1': 'റബ്ബർ',
+                'rubber-row-2': '₹165/kg',
+                'rubber-row-3': '▼ -0.8%',
+                'cardamom-row-1': 'ഏലം',
+                'cardamom-row-2': '₹1100/kg',
+                'cardamom-row-3': '▲ +3.2%',
+                'knowledge-title': 'വിജ്ഞാന കേന്ദ്രം',
+                'knowledge-subtitle': 'വിളവ് വർദ്ധിപ്പിക്കുന്നതിനുള്ള വിദഗ്ദ്ധ നുറുങ്ങുകളും പരിസ്ഥിതി സൗഹൃദ കാർഷിക രീതികളും.',
+                'knowledge-irrigation-title': 'സുസ്ഥിര ജലസേചനം',
+                'knowledge-irrigation-text': 'കേരളത്തിലെ കാലാവസ്ഥയ്ക്ക് അനുയോജ്യമായ ഡ്രിപ്പ് ഇറിഗേഷൻ, സ്മാർട്ട് ജല മാനേജ്മെൻ്റ് ടെക്നിക്കുകൾ എന്നിവയെക്കുറിച്ച് പഠിക്കുക.',
+                'knowledge-pest-control-title': 'ജൈവ കീടനിയന്ത്രണം',
+                'knowledge-pest-control-text': 'ദോഷകരമായ രാസവസ്തുക്കൾ ഇല്ലാതെ വിളകളെ കീടങ്ങളിൽ നിന്ന് സംരക്ഷിക്കുന്നതിനുള്ള സ്വാഭാവികവും ഫലപ്രദവുമായ മാർഗ്ഗങ്ങൾ കണ്ടെത്തുക.',
+                'assistant-initial-message': 'ഹലോ! ഞാൻ നിങ്ങളുടെ എഐ ഫാർമിംഗ് അസിസ്റ്റന്റ് ആണ്. ഇന്ന് നിങ്ങൾക്ക് എങ്ങനെയാണ് സഹായിക്കാൻ കഴിയുക?',
+                'typing-message': 'ആലോചിക്കുന്നു...',
+                'market-drop-area': 'നിങ്ങളുടെ വിള ചിത്രം ഇവിടെ വലിച്ചിടുക, അല്ലെങ്കിൽ ',
+                'market-cta': 'അപ്‌ലോഡ് ചെയ്യാൻ ക്ലിക്കുചെയ്യുക',
+                'market-table-instruction': 'വില വിവരങ്ങൾ അറിയാൻ നിങ്ങളുടെ വിളയുടെ ചിത്രം അപ്‌ലോഡ് ചെയ്യുക.',
+                'back-button': '← വിജ്ഞാന കേന്ദ്രത്തിലേക്ക് തിരികെ',
+                'irrigation-details-title': 'കേരളത്തിലെ സുസ്ഥിര ജലസേചന വിദ്യകൾ',
+                'irrigation-details-intro': 'കേരളത്തിന്റെ വൈവിധ്യമാർന്ന കാലാവസ്ഥയിൽ, കനത്ത മഴ മുതൽ വരൾച്ച വരെ, ഫലപ്രദമായ ജല മാനേജ്മെൻ്റ് കൃഷിക്ക് നിർണായകമാണ്. സുസ്ഥിര ജലസേചന രീതികൾ ജലം സംരക്ഷിക്കാനും അധ്വാനം കുറയ്ക്കാനും വിളവ് വർദ്ധിപ്പിക്കാനും സഹായിക്കുന്നു.',
+                'drip-irrigation-heading': '1. തുള്ളിനന (Drip Irrigation)',
+                'drip-irrigation-text': 'തുള്ളിനന രീതിയിൽ വെള്ളവും വളവും ചെടിയുടെ വേരുകളിലേക്ക് നേരിട്ട്, തുള്ളികളായി നൽകുന്നു. ഈ രീതി വളരെ കാര്യക്ഷമമാണ്, ഇത് ബാഷ്പീകരണം മൂലമുള്ള ജലനഷ്ടം കുറയ്ക്കുന്നു. കേരളത്തിലെ ചരിഞ്ഞ പ്രദേശങ്ങളിലും വീട്ടുതോട്ടങ്ങളിലും പച്ചക്കറികൾ, പഴങ്ങൾ, സുഗന്ധവ്യഞ്ജനങ്ങൾ എന്നിവയ്ക്ക് ഇത് വളരെ അനുയോജ്യമാണ്.',
+                'sprinkler-irrigation-heading': '2. സ്പ്രിംഗ്ലർ ജലസേചനം',
+                'sprinkler-irrigation-text': 'സ്പ്രിംഗ്ലർ ജലസേചനം പ്രകൃതിദത്തമായ മഴയെ അനുകരിച്ച് വിളകൾക്ക് മുകളിൽ വെള്ളം തളിക്കുന്നു. മറ്റ് രീതികൾ പ്രയാസകരമായ പാടങ്ങളിലും പുൽമേടുകളിലും ഇത് മികച്ച ഓപ്ഷനാണ്. ഈ രീതി മണ്ണിലെ ഈർപ്പം നിലനിർത്താൻ സഹായിക്കുകയും വരണ്ട കാലങ്ങളിൽ വളരെ ഉപയോഗപ്രദമാവുകയും ചെയ്യും.',
+                'water-management-heading': '3. സ്മാർട്ട് ജല മാനേജ്മെന്റ്',
+                'water-management-text': 'മണ്ണിലെ ഈർപ്പം അറിയുന്ന സെൻസറുകളും ഓട്ടോമേറ്റഡ് സംവിധാനങ്ങളും പോലുള്ള സാങ്കേതികവിദ്യകൾ ഉപയോഗിക്കുന്നത് ജലത്തിന്റെ ഉപയോഗം ഒപ്റ്റിമൈസ് ചെയ്യാൻ സഹായിക്കും. ഈ ഉപകരണങ്ങൾ നിങ്ങളുടെ ജലസേചന സംവിധാനവുമായി ബന്ധിപ്പിക്കുന്നതിലൂടെ, ചെടികൾക്ക് ആവശ്യമായ വെള്ളം കൃത്യ സമയത്ത് നൽകാൻ കഴിയും, ഇത് അമിതമായ നനവും വരൾച്ചയും തടയുന്നു.',
+                'pest-control-details-title': 'കേരളത്തിലെ ജൈവ കീടനിയന്ത്രണം',
+                'pest-control-details-intro': 'ആരോഗ്യമുള്ള ആവാസവ്യവസ്ഥ നിലനിർത്തുന്നതിനും രാസവസ്തുക്കൾ ഇല്ലാത്ത വിളകൾ ഉത്പാദിപ്പിക്കുന്നതിനും ജൈവ കീടനിയന്ത്രണ മാർഗ്ഗങ്ങൾ അത്യാവശ്യമാണ്. ഈ രീതികൾ പ്രകൃതിദത്തമായ ചേരുവകളും സുസ്ഥിര രീതികളും ഉപയോഗിച്ച് നിങ്ങളുടെ ചെടികളെ കേരളത്തിലെ സാധാരണ കീടങ്ങളിൽ നിന്ന് സംരക്ഷിക്കുന്നു.',
+                'neem-oil-heading': '1. വേപ്പെണ്ണ എമൽഷൻ',
+                'neem-oil-text': 'വേപ്പെണ്ണ, വേപ്പിൻ മരത്തിൽ നിന്ന് വേർതിരിച്ചെടുക്കുന്ന ശക്തമായ പ്രകൃതിദത്ത കീടനാശിനിയാണ്. ഇത് ഇല ചുരുട്ടിപ്പുഴു, ഏഫിഡുകൾ തുടങ്ങിയ പലതരം കീടങ്ങളുടെ ജീവിത ചക്രം തടസ്സപ്പെടുത്തുന്നു. ഇത് ഉപയോഗിക്കാൻ, 5 മില്ലി വേപ്പെണ്ണ ഒരു ലിറ്റർ വെള്ളത്തിൽ ലയിപ്പിക്കുക. എല്ലാ 7-10 ദിവസത്തിലും ഇലകളിൽ, പ്രത്യേകിച്ച് അടിഭാഗത്ത്, ഈ ലായനി തളിക്കുക.',
+                'bio-pesticides-heading': '2. ജൈവ കീടനാശിനികൾ',
+                'bio-pesticides-text': 'ജൈവ കീടനാശിനികൾ കീടങ്ങളെ നിയന്ത്രിക്കാൻ ജീവികളെയോ അവയുടെ ഉൽപ്പന്നങ്ങളെയോ ഉപയോഗിക്കുന്നു. ഉദാഹരണത്തിന്, നെല്ലിലെ തണ്ടുതുരപ്പൻ പുഴുക്കളെ നിയന്ത്രിക്കാൻ ട്രൈക്കോഗ്രാമ എന്ന പരാദങ്ങളെയും, തെങ്ങുകളിലെ ചെല്ലികളെ നിയന്ത്രിക്കാൻ ബ്യൂവേറിയ ബാസിയാന എന്ന കുമിളിനെയും ഉപയോഗിക്കുന്നു. ഇവ വളരെ ഫലപ്രദവും പരിസ്ഥിതിക്ക് സുരക്ഷിതവുമാണ്.',
+                'companion-planting-heading': '3. കൂട്ടുകൃഷി',
+                'companion-planting-text': 'ചില വിളകളെ ഒരുമിച്ച് നട്ടാൽ കീടങ്ങളെ സ്വാഭാവികമായി അകറ്റാൻ കഴിയും. ഉദാഹരണത്തിന്, പച്ചക്കറിത്തോട്ടത്തിൽ ചെണ്ടുമല്ലി നട്ടാൽ നിമാവിരകളെ അകറ്റാം. അതുപോലെ, കടുക് പോലുള്ള വിളകൾ പ്രധാന വിളകളിൽ നിന്ന് കീടങ്ങളെ ആകർഷിക്കുന്ന ട്രാപ്പ് വിളകളായി ഉപയോഗിച്ച് നിങ്ങളുടെ വിളവ് സംരക്ഷിക്കാൻ സാധിക്കും.',
+            }
+        };
+
+        function updateLanguage() {
+            const elements = document.querySelectorAll('[data-translate]');
+            const placeholders = document.querySelectorAll('[data-translate-placeholder]');
+            
+            elements.forEach(el => {
+                const key = el.getAttribute('data-translate');
+                if (translations[currentLanguage][key]) {
+                    el.textContent = translations[currentLanguage][key];
+                }
+            });
+
+            placeholders.forEach(el => {
+                const key = el.getAttribute('data-translate-placeholder');
+                if (translations[currentLanguage][key]) {
+                    el.placeholder = translations[currentLanguage][key];
+                }
+            });
+            
+            // Update the language switcher button text
+            const langSwitcher = document.getElementById('lang-switcher');
+            if (currentLanguage === 'en') {
+                langSwitcher.textContent = 'English ↔ മലയാളം';
+            } else {
+                langSwitcher.textContent = 'മലയാളം ↔ English';
+            }
+        }
+
+        document.getElementById('lang-switcher').addEventListener('click', () => {
+            currentLanguage = currentLanguage === 'en' ? 'ml' : 'en';
+            updateLanguage();
+        });
+
+        // Functional AI Assistant using Gemini API
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send');
+        const chatWindow = document.getElementById('chat-window');
+
+        // This is the core function that makes the API call to a real LLM
+        async function getAiResponse(userQuery) {
+            const systemPrompt = `You are an expert AI Farming Assistant for the Indian state of Kerala. Your job is to provide highly accurate, region-specific, and crop-specific agricultural advice to farmers in Kerala. Always tailor your responses to Kerala’s agro-climatic zones, crops, soil types, pests, and farming challenges. Your core abilities include: 1. Recommending suitable crops based on district, season, and soil. 2. Suggesting fertilizers and organic alternatives for specific crops and soils (e.g., loamy, laterite, clayey, etc.) 3. Giving pest and disease management tips based on common issues in Kerala. 4. Providing irrigation and water management advice, especially in flood-prone or drought-prone areas. 5. Advising on sustainable, organic, and traditional Kerala farming techniques. 6. Answering in simple, clear language. 7. Always consider Kerala’s unique geography, climate, and local practices. 8. When soil type or location is not given, ask for it politely. 9. If information is missing or uncertain, clearly say so — do not make things up. Do not give general farming advice. Only respond with solutions appropriate to *Kerala's farming context*. You are AgriVerse AI — Kerala's expert AI Farming Assistant.`;
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+            
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'ai-message message-bubble self-start flex items-center space-x-2';
+            const thinkingText = currentLanguage === 'en' ? 'Thinking...' : 'ആലോചിക്കുന്നു...';
+            typingIndicator.innerHTML = `<div class="loader"></div><span>${thinkingText}</span>`;
+            chatWindow.appendChild(typingIndicator);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                const text = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't get a response. Please try again.";
+                
+                // Remove typing indicator and add the AI's response
+                chatWindow.removeChild(typingIndicator);
+                const botBubble = document.createElement('div');
+                botBubble.className = 'ai-message message-bubble self-start';
+                botBubble.textContent = text;
+                chatWindow.appendChild(botBubble);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            } catch (error) {
+                console.error("Error fetching AI response:", error);
+                chatWindow.removeChild(typingIndicator);
+                const errorBubble = document.createElement('div');
+                errorBubble.className = 'ai-message message-bubble self-start';
+                errorBubble.textContent = "An error occurred. Please check your network connection and try again.";
+                chatWindow.appendChild(errorBubble);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+        }
+
+        chatSendBtn.addEventListener('click', () => {
+            const message = chatInput.value.trim();
+            if (message) {
+                const userBubble = document.createElement('div');
+                userBubble.className = 'user-message message-bubble self-end';
+                userBubble.textContent = message;
+                chatWindow.appendChild(userBubble);
+                chatInput.value = '';
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+                getAiResponse(message);
+            }
+        });
+
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                chatSendBtn.click();
+            }
+        });
+
+        // Functional Disease Detector using Gemini API
+        const fileInput = document.getElementById('file-input');
+        const dropArea = document.getElementById('drop-area');
+        const diseaseNameEl = document.getElementById('disease-name');
+        const detectionSummaryEl = document.getElementById('detection-summary');
+        const remediesTextEl = document.getElementById('remedies-text');
+        const resultDiv = document.getElementById('detector-result');
+        const uploadedImageEl = document.getElementById('uploaded-image');
+        const detectorLoader = document.getElementById('detector-loader');
+
+        dropArea.addEventListener('click', () => fileInput.click());
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.add('border-green-500'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.remove('border-green-500'), false);
+        });
+
+        dropArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        async function handleFiles(files) {
+            if (files.length === 0) return;
+            const file = files[0];
+            
+            // Reset and show loader
+            resultDiv.classList.remove('hidden');
+            diseaseNameEl.textContent = '';
+            detectionSummaryEl.textContent = '';
+            remediesTextEl.textContent = '';
+            uploadedImageEl.classList.add('hidden');
+            detectorLoader.classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                uploadedImageEl.src = e.target.result;
+                uploadedImageEl.classList.remove('hidden');
+                const base64Data = e.target.result.split(',')[1];
+                const mimeType = file.type;
+
+                const userPrompt = `Analyze the provided image of a crop and identify any disease or pest. Provide the following information in a concise, well-formatted text:\n\nDisease Name:\nSymptoms:\nOrganic Remedies:\nChemical Treatment Options:\n\nBe highly specific to farming in Kerala, India. If you cannot identify a disease, state that clearly.`;
+
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: userPrompt },
+                            { inlineData: { mimeType: mimeType, data: base64Data } }
+                        ]
+                    }],
+                };
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API response error: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    const text = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Analysis failed. Please try a different image.";
+
+                    // Parse the text response and update the UI
+                    const lines = text.split('\n').filter(line => line.trim() !== '');
+                    let diseaseName = 'Unknown Disease';
+                    let symptoms = 'N/A';
+                    let remedies = 'N/A';
+                    
+                    if (lines[0].startsWith('Disease Name:')) {
+                        diseaseName = lines[0].replace('Disease Name:', '').trim();
+                        symptoms = lines.find(line => line.startsWith('Symptoms:'))?.replace('Symptoms:', '').trim() || 'N/A';
+                        remedies = lines.find(line => line.startsWith('Organic Remedies:'))?.replace('Organic Remedies:', '').trim() || 'N/A';
+                        const chemical = lines.find(line => line.startsWith('Chemical Treatment Options:'))?.replace('Chemical Treatment Options:', '').trim() || '';
+                        if (remedies && chemical) {
+                            remedies += '\n\n' + 'Chemical Treatment: ' + chemical;
+                        } else if (chemical) {
+                             remedies = 'Chemical Treatment: ' + chemical;
+                        }
+                    } else {
+                        symptoms = text;
+                        remedies = "Could not find specific remedies.";
+                    }
+                    
+                    diseaseNameEl.textContent = diseaseName;
+                    detectionSummaryEl.textContent = symptoms;
+                    remediesTextEl.textContent = remedies;
+
+                } catch (error) {
+                    console.error("Error analyzing image:", error);
+                    diseaseNameEl.textContent = 'Analysis Failed';
+                    detectionSummaryEl.textContent = "An error occurred while analyzing the image. Please try again or with a different photo.";
+                    remediesTextEl.textContent = '';
+                } finally {
+                    detectorLoader.classList.add('hidden');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Market & Price Tracker functionality
+        const marketFileInput = document.getElementById('market-file-input');
+        const marketDropArea = document.getElementById('market-drop-area');
+        const marketResultDiv = document.getElementById('market-result');
+        const marketLoader = document.getElementById('market-loader');
+        const marketTableBody = document.getElementById('market-table-body');
+        
+        marketDropArea.addEventListener('click', () => marketFileInput.click());
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            marketDropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            marketDropArea.addEventListener(eventName, () => marketDropArea.classList.add('border-green-500'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            marketDropArea.addEventListener(eventName, () => marketDropArea.classList.remove('border-green-500'), false);
+        });
+
+        marketDropArea.addEventListener('drop', handleMarketDrop, false);
+
+        function handleMarketDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleMarketFiles(files);
+        }
+
+        marketFileInput.addEventListener('change', (e) => handleMarketFiles(e.target.files));
+
+        async function handleMarketFiles(files) {
+            if (files.length === 0) return;
+            const file = files[0];
+
+            marketResultDiv.classList.remove('hidden');
+            marketLoader.classList.remove('hidden');
+            marketTableBody.innerHTML = '';
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const base64Data = e.target.result.split(',')[1];
+                const mimeType = file.type;
+
+                const userPrompt = `Analyze the provided image and identify the crop. Based on the identified crop, provide a plausible current market price and its trend (e.g., rising or falling). Format the response as a single, concise paragraph:
+                Crop: [Crop Name]
+                Today's Price: [Simulated Price]
+                Trend: [Simulated Trend]
+                `;
+
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: userPrompt },
+                            { inlineData: { mimeType: mimeType, data: base64Data } }
+                        ]
+                    }],
+                };
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API response error: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    const text = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Could not analyze the image.";
+
+                    const lines = text.split('\n');
+                    const cropLine = lines.find(line => line.startsWith('Crop:'));
+                    const priceLine = lines.find(line => line.startsWith('Today\'s Price:'));
+                    const trendLine = lines.find(line => line.startsWith('Trend:'));
+
+                    if (cropLine && priceLine && trendLine) {
+                        const cropName = cropLine.replace('Crop:', '').trim();
+                        const price = priceLine.replace('Today\'s Price:', '').trim();
+                        const trend = trendLine.replace('Trend:', '').trim();
+                        updateMarketTable(cropName, price, trend);
+                    } else {
+                        const errorRow = document.createElement('tr');
+                        const errorCell = document.createElement('td');
+                        errorCell.colSpan = 3;
+                        errorCell.className = 'p-4 text-center text-red-400';
+                        errorCell.textContent = text;
+                        errorRow.appendChild(errorCell);
+                        marketTableBody.appendChild(errorRow);
+                    }
+
+                } catch (error) {
+                    console.error("Error analyzing image for market data:", error);
+                    const errorRow = document.createElement('tr');
+                    const errorCell = document.createElement('td');
+                    errorCell.colSpan = 3;
+                    errorCell.className = 'p-4 text-center text-red-400';
+                    errorCell.textContent = "An error occurred. Please try again with a different photo.";
+                    errorRow.appendChild(errorCell);
+                    marketTableBody.appendChild(errorRow);
+                } finally {
+                    marketLoader.classList.add('hidden');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updateMarketTable(crop, price, trend) {
+            marketTableBody.innerHTML = '';
+            
+            const newRow = document.createElement('tr');
+            newRow.className = 'border-b border-gray-700';
+            
+            const cropCell = document.createElement('td');
+            cropCell.className = 'p-4';
+            cropCell.textContent = crop;
+            
+            const priceCell = document.createElement('td');
+            priceCell.className = `p-4 ${trend.includes('▲') ? 'text-green-400' : 'text-red-400'}`;
+            priceCell.textContent = price;
+            
+            const trendCell = document.createElement('td');
+            trendCell.className = `p-4 ${trend.includes('▲') ? 'text-green-400' : 'text-red-400'}`;
+            trendCell.textContent = trend;
+
+            newRow.appendChild(cropCell);
+            newRow.appendChild(priceCell);
+            newRow.appendChild(trendCell);
+            
+            marketTableBody.appendChild(newRow);
+        }
+        
+        // Navigation between main page and detail page
+        const allMainSections = document.querySelectorAll('.section:not(#irrigation-details-page):not(#pest-control-details-page)');
+        const irrigationCard = document.getElementById('irrigation-card');
+        const irrigationDetailsPage = document.getElementById('irrigation-details-page');
+        const backButton1 = document.getElementById('back-to-knowledge');
+        
+        irrigationCard.addEventListener('click', () => {
+            allMainSections.forEach(section => section.style.display = 'none');
+            irrigationDetailsPage.style.display = 'flex';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        
+        backButton1.addEventListener('click', () => {
+            irrigationDetailsPage.style.display = 'none';
+            allMainSections.forEach(section => section.style.display = 'flex');
+            window.scrollTo({ top: document.getElementById('knowledge').offsetTop, behavior: 'smooth' });
+        });
+
+        // Organic Pest Control detail page logic
+        const pestControlCard = document.getElementById('pest-control-card');
+        const pestControlDetailsPage = document.getElementById('pest-control-details-page');
+        const backButton2 = document.getElementById('back-to-knowledge-2');
+        
+        pestControlCard.addEventListener('click', () => {
+            allMainSections.forEach(section => section.style.display = 'none');
+            pestControlDetailsPage.style.display = 'flex';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        
+        backButton2.addEventListener('click', () => {
+            pestControlDetailsPage.style.display = 'none';
+            allMainSections.forEach(section => section.style.display = 'flex');
+            window.scrollTo({ top: document.getElementById('knowledge').offsetTop, behavior: 'smooth' });
+        });
+
+        // Start the 3D animation when the window loads
+        window.onload = function () {
+            animate();
+            initMap();
+            updateLanguage();
+        };
+
+        // Initialize and populate the interactive map
+        function initMap() {
+            const mapContainer = document.getElementById('kerala-map');
+            if (!mapContainer) {
+                console.error('Map container not found');
+                return;
+            }
+
+            const keralaCenter = [10.8505, 76.2711];
+            const mymap = L.map('kerala-map').setView(keralaCenter, 7);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(mymap);
+
+            const districts = [
+                {
+                    name: 'Thiruvananthapuram',
+                    coords: [8.5241, 76.9366],
+                    temp: '29°C',
+                    humidity: '88%',
+                    rainfall: '2mm'
+                },
+                {
+                    name: 'Kochi',
+                    coords: [9.9816, 76.2999],
+                    temp: '28°C',
+                    humidity: '90%',
+                    rainfall: '12mm'
+                },
+                {
+                    name: 'Kozhikode',
+                    coords: [11.2588, 75.7804],
+                    temp: '27°C',
+                    humidity: '91%',
+                    rainfall: '15mm'
+                },
+                {
+                    name: 'Wayanad',
+                    coords: [11.6854, 76.1320],
+                    temp: '22°C',
+                    humidity: '95%',
+                    rainfall: '25mm'
+                },
+                {
+                    name: 'Kannur',
+                    coords: [11.8745, 75.3704],
+                    temp: '27°C',
+                    humidity: '87%',
+                    rainfall: '10mm'
+                },
+                {
+                    name: 'Palakkad',
+                    coords: [10.7867, 76.6548],
+                    temp: '31°C',
+                    humidity: '75%',
+                    rainfall: '1mm'
+                },
+                {
+                    name: 'Alappuzha',
+                    coords: [9.4981, 76.3388],
+                    temp: '29°C',
+                    humidity: '92%',
+                    rainfall: '8mm'
+                },
+            ];
+
+            const tempValueEl = document.getElementById('weather-temp-value');
+            const humidityValueEl = document.getElementById('weather-humidity-value');
+            const rainfallValueEl = document.getElementById('weather-rainfall-value');
+            const weatherSubtitleEl = document.querySelector('[data-translate="weather-subtitle"]');
+
+            // Set initial values (for a generic location or a default one)
+            updateWeatherDisplay('Select a location on the map to see real-time updates.');
+            
+            function updateWeatherDisplay(subtitleText, data = null) {
+                if (currentLanguage === 'ml' && translations.ml.hasOwnProperty('weather-subtitle')) {
+                    weatherSubtitleEl.textContent = translations.ml['weather-subtitle'];
+                } else {
+                    weatherSubtitleEl.textContent = subtitleText;
+                }
+
+                if (data) {
+                    tempValueEl.textContent = data.temp;
+                    humidityValueEl.textContent = data.humidity;
+                    rainfallValueEl.textContent = data.rainfall;
+                } else {
+                    tempValueEl.textContent = '--';
+                    humidityValueEl.textContent = '--';
+                    rainfallValueEl.textContent = '--';
+                }
+            }
+            
+            // Add markers with click listeners
+            districts.forEach(district => {
+                const marker = L.marker(district.coords).addTo(mymap);
+                marker.on('click', () => {
+                    updateWeatherDisplay(`Weather updates for ${district.name}`, district);
+                });
+            });
+
+            window.addEventListener('resize', function() {
+                mymap.invalidateSize();
+            });
+        }
+        
+    </script>
+</body>
+</html>
